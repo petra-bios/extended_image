@@ -1,28 +1,26 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:example/common/common_widget.dart';
 import 'package:example/common/crop_editor_helper.dart';
-import 'package:example/common/utils.dart';
-import 'package:example/main.dart';
+import 'package:example/common/image_picker/image_picker.dart';
 import 'package:extended_image/extended_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:ff_annotation_route/ff_annotation_route.dart';
-import 'package:image_picker_saver/image_picker_saver.dart';
+import 'package:flutter_candies_demo_library/flutter_candies_demo_library.dart';
 import 'package:oktoast/oktoast.dart';
-import 'package:image_picker/image_picker.dart' as picker;
 import 'package:url_launcher/url_launcher.dart';
 
 ///
 ///  create by zmtzawqlp on 2019/8/22
 ///
 @FFRoute(
-    name: "fluttercandies://imageeditor",
-    routeName: "image editor",
-    description: "crop,rotate and flip with image editor")
+    name: 'fluttercandies://imageeditor',
+    routeName: 'image editor',
+    description: 'crop,rotate and flip with image editor')
 class ImageEditorDemo extends StatefulWidget {
   @override
   _ImageEditorDemoState createState() => _ImageEditorDemoState();
@@ -31,14 +29,15 @@ class ImageEditorDemo extends StatefulWidget {
 class _ImageEditorDemoState extends State<ImageEditorDemo> {
   final GlobalKey<ExtendedImageEditorState> editorKey =
       GlobalKey<ExtendedImageEditorState>();
-  List<AspectRatioItem> _aspectRatios = List<AspectRatioItem>()
-    ..add(AspectRatioItem(text: "custom", value: CropAspectRatios.custom))
-    ..add(AspectRatioItem(text: "original", value: CropAspectRatios.original))
-    ..add(AspectRatioItem(text: "1*1", value: CropAspectRatios.ratio1_1))
-    ..add(AspectRatioItem(text: "4*3", value: CropAspectRatios.ratio4_3))
-    ..add(AspectRatioItem(text: "3*4", value: CropAspectRatios.ratio3_4))
-    ..add(AspectRatioItem(text: "16*9", value: CropAspectRatios.ratio16_9))
-    ..add(AspectRatioItem(text: "9*16", value: CropAspectRatios.ratio9_16));
+  final List<AspectRatioItem> _aspectRatios = <AspectRatioItem>[
+    AspectRatioItem(text: 'custom', value: CropAspectRatios.custom),
+    AspectRatioItem(text: 'original', value: CropAspectRatios.original),
+    AspectRatioItem(text: '1*1', value: CropAspectRatios.ratio1_1),
+    AspectRatioItem(text: '4*3', value: CropAspectRatios.ratio4_3),
+    AspectRatioItem(text: '3*4', value: CropAspectRatios.ratio3_4),
+    AspectRatioItem(text: '16*9', value: CropAspectRatios.ratio16_9),
+    AspectRatioItem(text: '9*16', value: CropAspectRatios.ratio9_16)
+  ];
   AspectRatioItem _aspectRatio;
   bool _cropping = false;
   @override
@@ -51,7 +50,7 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("image editor demo"),
+        title: const Text('image editor demo'),
         actions: <Widget>[
           IconButton(
             icon: Icon(Icons.photo_library),
@@ -60,37 +59,42 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
           IconButton(
             icon: Icon(Icons.done),
             onPressed: () {
-              _showCropDialog(context);
+              if (kIsWeb) {
+                _cropImage(false);
+              } else {
+                _showCropDialog(context);
+              }
             },
           ),
         ],
       ),
       body: Center(
-        child: _fileImage != null
-            ? ExtendedImage.file(
-                _fileImage,
+        child: _memoryImage != null
+            ? ExtendedImage.memory(
+                _memoryImage,
                 fit: BoxFit.contain,
                 mode: ExtendedImageMode.editor,
                 enableLoadState: true,
                 extendedImageEditorKey: editorKey,
-                initEditorConfigHandler: (state) {
+                initEditorConfigHandler: (ExtendedImageState state) {
                   return EditorConfig(
                       maxScale: 8.0,
-                      cropRectPadding: EdgeInsets.all(20.0),
+                      cropRectPadding: const EdgeInsets.all(20.0),
                       hitTestSize: 20.0,
                       initCropRectType: InitCropRectType.imageRect,
                       cropAspectRatio: _aspectRatio.value);
                 },
               )
-            : ExtendedImage.network(
-                imageTestUrl,
+            : ExtendedImage.asset(
+                'assets/image.jpg',
                 fit: BoxFit.contain,
                 mode: ExtendedImageMode.editor,
+                enableLoadState: true,
                 extendedImageEditorKey: editorKey,
-                initEditorConfigHandler: (state) {
+                initEditorConfigHandler: (ExtendedImageState state) {
                   return EditorConfig(
                       maxScale: 8.0,
-                      cropRectPadding: EdgeInsets.all(20.0),
+                      cropRectPadding: const EdgeInsets.all(20.0),
                       hitTestSize: 20.0,
                       initCropRectType: InitCropRectType.imageRect,
                       cropAspectRatio: _aspectRatio.value);
@@ -99,7 +103,7 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
       ),
       bottomNavigationBar: BottomAppBar(
         color: Colors.lightBlue,
-        shape: CircularNotchedRectangle(),
+        shape: const CircularNotchedRectangle(),
         child: ButtonTheme(
           minWidth: 0.0,
           child: Row(
@@ -108,47 +112,55 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
             children: <Widget>[
               FlatButtonWithIcon(
                 icon: Icon(Icons.crop),
-                label: Text(
-                  "Crop",
+                label: const Text(
+                  'Crop',
                   style: TextStyle(fontSize: 10.0),
                 ),
                 textColor: Colors.white,
                 onPressed: () {
-                  showModalBottomSheet(
+                  showDialog<void>(
                       context: context,
                       builder: (BuildContext context) {
-                        return Container(
-                          child: GridView.builder(
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 3),
-                            padding: EdgeInsets.all(20.0),
-                            itemBuilder: (_, index) {
-                              var item = _aspectRatios[index];
-                              return GestureDetector(
-                                child: AspectRatioWidget(
-                                  aspectRatio: item.value,
-                                  aspectRatioS: item.text,
-                                  isSelected: item == _aspectRatio,
-                                ),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  setState(() {
-                                    _aspectRatio = item;
-                                  });
+                        return Column(
+                          children: <Widget>[
+                            const Expanded(
+                              child: SizedBox(),
+                            ),
+                            SizedBox(
+                              height: ScreenUtil.instance.setWidth(200.0),
+                              child: ListView.builder(
+                                shrinkWrap: true,
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.all(20.0),
+                                itemBuilder: (_, int index) {
+                                  final AspectRatioItem item =
+                                      _aspectRatios[index];
+                                  return GestureDetector(
+                                    child: AspectRatioWidget(
+                                      aspectRatio: item.value,
+                                      aspectRatioS: item.text,
+                                      isSelected: item == _aspectRatio,
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      setState(() {
+                                        _aspectRatio = item;
+                                      });
+                                    },
+                                  );
                                 },
-                              );
-                            },
-                            itemCount: _aspectRatios.length,
-                          ),
+                                itemCount: _aspectRatios.length,
+                              ),
+                            ),
+                          ],
                         );
                       });
                 },
               ),
               FlatButtonWithIcon(
                 icon: Icon(Icons.flip),
-                label: Text(
-                  "Flip",
+                label: const Text(
+                  'Flip',
                   style: TextStyle(fontSize: 10.0),
                 ),
                 textColor: Colors.white,
@@ -158,8 +170,8 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
               ),
               FlatButtonWithIcon(
                 icon: Icon(Icons.rotate_left),
-                label: Text(
-                  "Rotate Left",
+                label: const Text(
+                  'Rotate Left',
                   style: TextStyle(fontSize: 8.0),
                 ),
                 textColor: Colors.white,
@@ -169,8 +181,8 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
               ),
               FlatButtonWithIcon(
                 icon: Icon(Icons.rotate_right),
-                label: Text(
-                  "Rotate Right",
+                label: const Text(
+                  'Rotate Right',
                   style: TextStyle(fontSize: 8.0),
                 ),
                 textColor: Colors.white,
@@ -180,8 +192,8 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
               ),
               FlatButtonWithIcon(
                 icon: Icon(Icons.restore),
-                label: Text(
-                  "Reset",
+                label: const Text(
+                  'Reset',
                   style: TextStyle(fontSize: 10.0),
                 ),
                 textColor: Colors.white,
@@ -197,7 +209,7 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
   }
 
   void _showCropDialog(BuildContext context) {
-    showDialog(
+    showDialog<void>(
         context: context,
         builder: (BuildContext content) {
           return Column(
@@ -206,27 +218,27 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
                 child: Container(),
               ),
               Container(
-                  margin: EdgeInsets.all(20.0),
+                  margin: const EdgeInsets.all(20.0),
                   child: Material(
                       child: Padding(
-                    padding: EdgeInsets.all(15.0),
+                    padding: const EdgeInsets.all(15.0),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          "select library to crop",
+                          'select library to crop',
                           style: TextStyle(
                               fontSize: 24.0, fontWeight: FontWeight.bold),
                         ),
-                        SizedBox(
+                        const SizedBox(
                           height: 20.0,
                         ),
                         Text.rich(TextSpan(children: <TextSpan>[
                           TextSpan(
                             children: <TextSpan>[
                               TextSpan(
-                                  text: "Image",
+                                  text: 'Image',
                                   style: TextStyle(
                                       color: Colors.blue,
                                       decorationStyle:
@@ -236,18 +248,18 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {
                                       launch(
-                                          "https://github.com/brendan-duncan/image");
+                                          'https://github.com/brendan-duncan/image');
                                     }),
-                              TextSpan(
+                              const TextSpan(
                                   text:
-                                      "(Dart library) for decoding/encoding image formats, and image processing. It's stable.")
+                                      '(Dart library) for decoding/encoding image formats, and image processing. It\'s stable.')
                             ],
                           ),
-                          TextSpan(text: "\n\n"),
+                          const TextSpan(text: '\n\n'),
                           TextSpan(
                             children: <TextSpan>[
                               TextSpan(
-                                  text: "ImageEditor",
+                                  text: 'ImageEditor',
                                   style: TextStyle(
                                       color: Colors.blue,
                                       decorationStyle:
@@ -257,15 +269,15 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {
                                       launch(
-                                          "https://github.com/fluttercandies/flutter_image_editor");
+                                          'https://github.com/fluttercandies/flutter_image_editor');
                                     }),
-                              TextSpan(
+                              const TextSpan(
                                   text:
-                                      "(Native library) support android/ios, crop flip rotate. It's faster.")
+                                      '(Native library) support android/ios, crop flip rotate. It\'s faster.')
                             ],
                           )
                         ])),
-                        SizedBox(
+                        const SizedBox(
                           height: 20.0,
                         ),
                         Row(
@@ -312,20 +324,22 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
         });
   }
 
-  void _cropImage(bool useNative) async {
-    if (_cropping) return;
-    var msg = "";
+  Future<void> _cropImage(bool useNative) async {
+    if (_cropping) {
+      return;
+    }
+    String msg = '';
     try {
       _cropping = true;
 
-      showBusyingDialog();
+      await showBusyingDialog();
 
       Uint8List fileData;
 
       /// native library
       if (useNative) {
         fileData =
-            await cropImageDataWithNativeLibrary(state: editorKey.currentState);
+            Uint8List.fromList(await cropImageDataWithNativeLibrary(state: editorKey.currentState));
       } else {
         ///delay due to cropImageDataWithDartLibrary is time consuming on main thread
         ///it will block showBusyingDialog
@@ -334,14 +348,15 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
 
         ///if you don't want to block ui, use compute/isolate,but it costs more time.
         fileData =
-            await cropImageDataWithDartLibrary(state: editorKey.currentState);
+             Uint8List.fromList(await cropImageDataWithDartLibrary(state: editorKey.currentState));
       }
+      final String fileFath =
+          await ImageSaver.save('extended_image_cropped_image.jpg', fileData);
+      // var fileFath = await ImagePickerSaver.saveFile(fileData: fileData);
 
-      var fileFath = await ImagePickerSaver.saveFile(fileData: fileData);
-
-      msg = "save image : $fileFath";
-    } catch (e) {
-      msg = "save faild: $e";
+      msg = 'save image : $fileFath';
+    } catch (e, stack) {
+      msg = 'save faild: $e\n $stack';
       print(msg);
     }
 
@@ -350,44 +365,43 @@ class _ImageEditorDemoState extends State<ImageEditorDemo> {
     _cropping = false;
   }
 
-  File _fileImage;
-  void _getImage() async {
-    var image =
-        await picker.ImagePicker.pickImage(source: picker.ImageSource.gallery);
-
+  Uint8List _memoryImage;
+  Future<void> _getImage() async {
+    _memoryImage = await pickImage();
     setState(() {
       editorKey.currentState.reset();
-      _fileImage = image;
     });
   }
 
-  Future showBusyingDialog() async {
-    var primaryColor = Theme.of(context).primaryColor;
-    return showDialog(
+  Future<void> showBusyingDialog() async {
+    final Color primaryColor = Theme.of(context).primaryColor;
+    return showDialog<void>(
         context: context,
         barrierDismissible: false,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            height: double.infinity,
-            width: double.infinity,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                CircularProgressIndicator(
-                  strokeWidth: 2.0,
-                  valueColor: AlwaysStoppedAnimation(primaryColor),
-                ),
-                SizedBox(
-                  width: 10.0,
-                ),
-                Text(
-                  "cropping...",
-                  style: TextStyle(color: primaryColor),
-                )
-              ],
+        builder: (BuildContext c) {
+          return Material(
+            color: Colors.transparent,
+            child: Container(
+              height: double.infinity,
+              width: double.infinity,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  CircularProgressIndicator(
+                    strokeWidth: 2.0,
+                    valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                  ),
+                  const SizedBox(
+                    width: 10.0,
+                  ),
+                  Text(
+                    'cropping...',
+                    style: TextStyle(color: primaryColor),
+                  )
+                ],
+              ),
             ),
-          ),
-        ));
+          );
+        });
   }
 }
