@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
   extended_image_library: 
     git:
-      url: git://github.com/mozes-pb/extended_image_library.git
+      url: https://github.com/mozes-pb/extended_image_library
       ref: 0.1.9-withHeaderCacheImageData
 dev_dependencies:
   flutter_test:
